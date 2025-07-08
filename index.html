@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Advanced Interactive Form with Custom Keyboard</title>
+    <!-- Inter font from Google Fonts for a modern, clean look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* --- CSS Variables for Theming (Single Advanced Theme) --- */
+        :root {
+            --bg-color: #f0f4f8; /* Light blue-gray background */
+            --card-bg: #ffffff; /* White card background */
+            --text-color: #334155; /* Dark slate text for general content */
+            --heading-color: #1e293b; /* Even darker heading text */
+            --input-bg: #f8fafc; /* Very light input background */
+            --input-border: #cbd5e1; /* Light gray border for inputs */
+            --input-focus-border: #3b82f6; /* Vibrant blue for input focus */
+            --button-bg: #3b82f6; /* Blue button background */
+            --button-hover-bg: #2563eb; /* Darker blue on button hover */
+            --error-color: #ef4444; /* Bright red for error messages */
+            --success-color: #22c55e; /* Vibrant green for success states */
+            --shadow-color: rgba(0, 0, 0, 0.1); /* Subtle shadow */
+            --password-icon-color: #94a3b8; /* Default color for password eye icon */
+
+            /* Modal Specific Colors */
+            --modal-overlay-bg: rgba(0, 0, 0, 0.6); /* Dark overlay for modal */
+            --modal-bg: #ffffff; /* White background for modal content */
+            --modal-text-color: #1e293b; /* Dark text for modal content */
+            --modal-button-bg: #3b82f6; /* Blue button in modal */
+            --modal-button-hover-bg: #2563eb; /* Darker blue on modal button hover */
+            --modal-icon-color: #22c55e; /* Green icon in modal */
+
+            /* Keyboard Specific Colors */
+            --keyboard-bg: #e2e8f0; /* Light gray for keyboard background */
+            --keyboard-key-bg: #ffffff; /* White for individual keys */
+            --keyboard-key-hover-bg: #cbd5e1; /* Lighter gray on key hover */
+            --keyboard-key-text: #334155; /* Dark text for keys */
+            --keyboard-special-key-bg: #a0aec0; /* Gray for special keys (Shift, Enter) */
+            --keyboard-special-key-hover-bg: #718096; /* Darker gray on special key hover */
+            --keyboard-special-key-text: #ffffff; /* White text for special keys */
+            --keyboard-active-key-bg: #3b82f6; /* Blue for active state (e.g., Shift pressed) */
+            --keyboard-active-key-text: #ffffff;
+        }
+
+        /* --- Base Styles --- */
+        * {
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif; /* Apply the Inter font */
+            background-color: var(--bg-color); /* Use theme background color */
+            display: flex;
+            flex-direction: column; /* Allow content and keyboard to stack */
+            justify-content: center; /* Center content vertically */
+            align-items: center; /* Center content horizontally */
+            min-height: 100vh; /* Full viewport height */
+            color: var(--text-color); /* Use theme text color */
+            padding: 20px; /* Padding around the form for smaller screens */
+            overflow-x: hidden; /* Prevent horizontal scroll due to keyboard slide-in */
+        }
+
+        /* --- Form Container Styling --- */
+        .container {
+            background: var(--card-bg); /* Use theme card background */
+            padding: 40px 30px;
+            border-radius: 12px; /* Rounded corners */
+            box-shadow: 0 10px 25px var(--shadow-color); /* Soft shadow */
+            width: 100%;
+            max-width: 500px; /* Max width for desktop to keep it readable */
+            position: relative; /* Needed for potential absolute positioning inside */
+            margin-bottom: 20px; /* Space between form and keyboard */
+        }
+
+        /* --- Heading Styling --- */
+        h1 {
+            color: var(--heading-color); /* Use theme heading color */
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2rem; /* Large heading */
+            font-weight: 700; /* Bold */
+        }
+
+        /* --- Form Group (Label + Input + Error Message) Styling --- */
+        .form-group {
+            margin-bottom: 20px;
+            position: relative; /* For inline error messages and password icon */
+        }
+
+        .form-group label {
+            display: block; /* Make label take full width */
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--text-color); /* Use theme text color */
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px; /* Increased padding for better touch targets */
+            border: 1px solid var(--input-border); /* Theme border color */
+            border-radius: 8px; /* More rounded inputs */
+            background-color: var(--input-bg); /* Theme input background */
+            color: var(--text-color); /* Theme text color */
+            font-size: 1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease, background-color 0.3s ease; /* Smooth transitions for states */
+            outline: none; /* Remove default browser outline */
+        }
+
+        /* Input Focus State */
+        input:focus {
+            border-color: var(--input-focus-border); /* Highlight border on focus */
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2); /* Subtle glow on focus */
+        }
+
+        /* Input Error State */
+        input.error-state {
+            border-color: var(--error-color); /* Red border for errors */
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2); /* Red glow for errors */
+        }
+
+        /* Input Success State (Visual feedback for valid inputs) */
+        input.success-state {
+            border-color: var(--success-color); /* Green border for success */
+            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2); /* Green glow for success */
+        }
+
+        /* --- Inline Error Message Styling --- */
+        .error-message {
+            color: var(--error-color); /* Red text for error messages */
+            font-size: 0.875rem; /* Smaller font size */
+            margin-top: 5px;
+            height: 0; /* Initially hidden by setting height to 0 */
+            overflow: hidden; /* Hide overflow content */
+            opacity: 0; /* Fade out effect */
+            transition: height 0.3s ease-out, opacity 0.3s ease-out; /* Smooth slide and fade animation */
+        }
+
+        .error-message.show {
+            height: auto; /* Show content by allowing height to adjust */
+            opacity: 1; /* Fade in */
+            padding-top: 5px; /* Add some padding when shown */
+        }
+
+        /* --- Submit Button Styling --- */
+        button[type="submit"] {
+            width: 100%;
+            padding: 14px 20px;
+            background: var(--button-bg); /* Theme button background */
+            color: #ffffff; /* White text */
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease; /* Smooth animations */
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); /* Subtle shadow */
+        }
+
+        button[type="submit"]:hover {
+            background: var(--button-hover-bg); /* Darker on hover */
+            transform: translateY(-2px); /* Lift effect on hover */
+            box-shadow: 0 6px 15px rgba(59, 130, 246, 0.4); /* More pronounced shadow on hover */
+        }
+
+        button[type="submit"]:active {
+            transform: translateY(0); /* Press down effect on click */
+            box-shadow: 0 2px 5px rgba(59, 130, 246, 0.2); /* Smaller shadow on click */
+        }
+
+        /* --- Password Eye Icon Styling --- */
+        .password-input-wrapper {
+            position: relative;
+            width: 100%;
+        }
+
+        .password-input-wrapper input {
+            padding-right: 45px; /* Make space for the eye icon inside the input */
+        }
+
+        .toggle-password-visibility {
+            position: absolute;
+            right: 15px; /* Position from the right of the input */
+            top: 50%; /* Vertically center */
+            transform: translateY(-50%); /* Adjust for perfect vertical centering */
+            cursor: pointer;
+            color: var(--password-icon-color); /* Theme icon color */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            transition: color 0.3s ease; /* Smooth color change on hover */
+        }
+
+        .toggle-password-visibility:hover {
+            color: var(--input-focus-border); /* Highlight icon on hover */
+        }
+
+        .toggle-password-visibility svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        /* Control icon visibility based on the 'show-password' class on the wrapper */
+        .toggle-password-visibility .icon-show-password {
+            display: block; /* Default: show open eye (to hide password) */
+        }
+        .toggle-password-visibility .icon-hide-password {
+            display: none; /* Default: hide slashed eye (to show password) */
+        }
+
+        /* When password is shown (wrapper has 'show-password' class), swap icons */
+        .password-input-wrapper.show-password .icon-show-password {
+            display: none;
+        }
+        .password-input-wrapper.show-password .icon-hide-password {
+            display: block;
+        }
+
+        /* --- Success Modal Styles --- */
+        .modal-overlay {
+            position: fixed; /* Fixed position to cover the entire viewport */
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--modal-overlay-bg); /* Semi-transparent overlay */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000; /* High z-index to appear on top of everything */
+            opacity: 0; /* Initially hidden */
+            visibility: hidden; /* Prevent interaction when hidden */
+            transition: opacity 0.3s ease, visibility 0.3s ease; /* Smooth fade in/out */
+        }
+
+        .modal-overlay.show {
+            opacity: 1; /* Fade in */
+            visibility: visible; /* Make visible */
+        }
+
+        .modal-content {
+            background-color: var(--modal-bg); /* Theme modal background */
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3); /* Prominent shadow for the modal */
+            text-align: center;
+            width: 90%;
+            max-width: 400px; /* Max width for modal content */
+            transform: scale(0.8); /* Start smaller for a pop-in animation */
+            opacity: 0; /* Start hidden for pop-in animation */
+            transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.3s ease; /* Pop animation */
+            color: var(--modal-text-color); /* Theme modal text color */
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: scale(1); /* Scale to full size */
+            opacity: 1; /* Fade in */
+        }
+
+        .modal-icon {
+            color: var(--modal-icon-color); /* Theme modal icon color */
+            margin-bottom: 20px;
+        }
+
+        .modal-icon svg {
+            width: 80px; /* Large icon */
+            height: 80px;
+        }
+
+        .modal-title {
+            font-size: 2rem; /* Large title */
+            font-weight: 700;
+            margin-bottom: 10px;
+            color: var(--heading-color); /* Use heading color for modal title */
+        }
+
+        .modal-message {
+            font-size: 1rem;
+            line-height: 1.5;
+            margin-bottom: 30px;
+        }
+
+        .modal-ok-button {
+            padding: 12px 30px;
+            background-color: var(--modal-button-bg); /* Theme modal button background */
+            color: #ffffff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.2s ease; /* Smooth button animations */
+            box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); /* Subtle shadow */
+        }
+
+        .modal-ok-button:hover {
+            background-color: var(--modal-button-hover-bg); /* Darker on hover */
+            transform: translateY(-2px); /* Lift effect */
+        }
+
+        .modal-ok-button:active {
+            transform: translateY(0); /* Press down effect */
+        }
+
+        /* --- Custom Keyboard Styles --- */
+        .keyboard-container {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--keyboard-bg);
+            box-shadow: 0 -5px 20px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            transform: translateY(100%); /* Initially hidden below viewport */
+            transition: transform 0.3s ease-out; /* Smooth slide-up animation */
+            z-index: 999; /* Below modal, above form */
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .keyboard-container.show {
+            transform: translateY(0); /* Slide up to show */
+        }
+
+        .keyboard-row {
+            display: flex;
+            justify-content: center;
+            gap: 8px; /* Space between keys */
+        }
+
+        .keyboard-key {
+            flex: 1; /* Distribute space evenly */
+            padding: 12px 0;
+            background-color: var(--keyboard-key-bg);
+            color: var(--keyboard-key-text);
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1rem;
+            font-weight: 500;
+            text-align: center;
+            user-select: none; /* Prevent text selection on keys */
+            transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            min-width: 30px; /* Ensure keys are not too small */
+        }
+
+        .keyboard-key:hover {
+            background-color: var(--keyboard-key-hover-bg);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        .keyboard-key:active {
+            transform: translateY(0);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .keyboard-key.wide {
+            flex: 1.5; /* Make some keys wider */
+        }
+
+        .keyboard-key.extra-wide {
+            flex: 2.5; /* Make spacebar wider */
+        }
+
+        .keyboard-key.special {
+            background-color: var(--keyboard-special-key-bg);
+            color: var(--keyboard-special-key-text);
+            font-weight: 600;
+        }
+
+        .keyboard-key.special:hover {
+            background-color: var(--keyboard-special-key-hover-bg);
+        }
+
+        .keyboard-key.active-shift {
+            background-color: var(--keyboard-active-key-bg);
+            color: var(--keyboard-active-key-text);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.4);
+        }
+
+        /* Only one keyboard layout now, always active when keyboard is shown */
+        .keyboard-layout {
+            display: flex; /* Always display flex */
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* --- Responsive Adjustments for Mobile --- */
+        @media (max-width: 600px) {
+            body {
+                padding: 15px; /* Reduce overall padding on very small screens */
+            }
+
+            .container {
+                padding: 30px 20px; /* Reduce form padding */
+                border-radius: 8px; /* Slightly less rounded corners */
+                margin-bottom: 15px; /* Adjust spacing */
+            }
+
+            h1 {
+                font-size: 1.8rem; /* Smaller heading on mobile */
+                margin-bottom: 25px;
+            }
+
+            .form-group {
+                margin-bottom: 18px; /* Reduce spacing between form groups */
+            }
+
+            input {
+                padding: 10px 12px; /* Reduce input padding */
+                font-size: 0.95rem; /* Slightly smaller input font */
+            }
+
+            button[type="submit"] {
+                padding: 12px 15px; /* Adjust button padding */
+                font-size: 1rem; /* Adjust button font size */
+            }
+
+            .password-input-wrapper input {
+                padding-right: 40px; /* Adjust padding for smaller screens to fit icon */
+            }
+
+            .toggle-password-visibility {
+                right: 10px; /* Adjust icon position for smaller screens */
+                width: 20px;
+                height: 20px;
+            }
+            .toggle-password-visibility svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            /* Modal Responsive Adjustments */
+            .modal-content {
+                padding: 30px 20px;
+            }
+            .modal-icon svg {
+                width: 60px;
+                height: 60px;
+            }
+            .modal-title {
+                font-size: 1.6rem;
+            }
+            .modal-message {
+                font-size: 0.9rem;
+            }
+            .modal-ok-button {
+                padding: 10px 25px;
+                font-size: 0.9rem;
+            }
+
+            /* Keyboard Responsive */
+            .keyboard-container {
+                padding: 10px;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                gap: 6px;
+            }
+            .keyboard-row {
+                gap: 6px;
+            }
+            .keyboard-key {
+                padding: 10px 0;
+                font-size: 0.9rem;
+                min-width: 25px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Register Account</h1>
+
+        <form id="registerForm" novalidate>
+            <!-- Full Name Field -->
+            <div class="form-group">
+                <label for="name">Full Name</label>
+                <input type="text" id="name" placeholder="John Doe" />
+                <div class="error-message" id="nameError">Please enter your full name.</div>
+            </div>
+
+            <!-- Email Address Field -->
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" placeholder="john.doe@example.com" />
+                <div class="error-message" id="emailError">Enter a valid email address.</div>
+            </div>
+
+            <!-- Phone Number Field -->
+            <div class="form-group">
+                <label for="phone">Phone Number</label>
+                <input type="tel" id="phone" placeholder="e.g., 1234567890" />
+                <div class="error-message" id="phoneError">Phone number must be 10–15 digits.</div>
+            </div>
+
+            <!-- Password Field with Eye Icon for Visibility Toggle -->
+            <div class="form-group">
+                <label for="password">Password</label>
+                <div class="password-input-wrapper" id="passwordInputWrapper">
+                    <input type="password" id="password" placeholder="********" />
+                    <span class="toggle-password-visibility" id="togglePassword">
+                        <!-- Eye Open Icon (initially visible, indicates clicking will hide password) -->
+                        <svg class="icon-show-password" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                        </svg>
+                        <!-- Eye Slashed Icon (initially hidden, indicates clicking will show password) -->
+                        <svg class="icon-hide-password" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7 .964-3.056 3.633-5.556 6.839-6.912m-2.529-.269A9.97 9.097 0 0112 5c4.478 0 8.268 2.943 9.542 7-.472 1.493-1.282 2.875-2.274 4.085M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        </svg>
+                    </span>
+                </div>
+                <div class="error-message" id="passwordError">
+                    Password must be 8+ characters, include uppercase, number & special char.
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+
+    <!-- Success Modal: Appears only upon successful form submission -->
+    <div class="modal-overlay" id="successModalOverlay">
+        <div class="modal-content">
+            <div class="modal-icon">
+                <!-- Checkmark Icon -->
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <div class="modal-title">Registration Successful!</div>
+            <div class="modal-message">Your account has been created. Welcome!</div>
+            <button class="modal-ok-button" id="modalOkButton">OK</button>
+        </div>
+    </div>
+
+    <!-- Custom On-Screen Keyboard -->
+    <div class="keyboard-container" id="keyboardContainer">
+        <!-- Alphanumeric Layout (Now the only layout) -->
+        <div class="keyboard-layout active" id="alphaKeyboard">
+            <div class="keyboard-row">
+                <div class="keyboard-key" data-key="q">q</div>
+                <div class="keyboard-key" data-key="w">w</div>
+                <div class="keyboard-key" data-key="e">e</div>
+                <div class="keyboard-key" data-key="r">r</div>
+                <div class="keyboard-key" data-key="t">t</div>
+                <div class="keyboard-key" data-key="y">y</div>
+                <div class="keyboard-key" data-key="u">u</div>
+                <div class="keyboard-key" data-key="i">i</div>
+                <div class="keyboard-key" data-key="o">o</div>
+                <div class="keyboard-key" data-key="p">p</div>
+            </div>
+            <div class="keyboard-row">
+                <div class="keyboard-key" data-key="a">a</div>
+                <div class="keyboard-key" data-key="s">s</div>
+                <div class="keyboard-key" data-key="d">d</div>
+                <div class="keyboard-key" data-key="f">f</div>
+                <div class="keyboard-key" data-key="g">g</div>
+                <div class="keyboard-key" data-key="h">h</div>
+                <div class="keyboard-key" data-key="j">j</div>
+                <div class="keyboard-key" data-key="k">k</div>
+                <div class="keyboard-key" data-key="l">l</div>
+            </div>
+            <div class="keyboard-row">
+                <div class="keyboard-key special" data-key="shift">Shift</div>
+                <div class="keyboard-key" data-key="z">z</div>
+                <div class="keyboard-key" data-key="x">x</div>
+                <div class="keyboard-key" data-key="c">c</div>
+                <div class="keyboard-key" data-key="v">v</div>
+                <div class="keyboard-key" data-key="b">b</div>
+                <div class="keyboard-key" data-key="n">n</div>
+                <div class="keyboard-key" data-key="m">m</div>
+                <div class="keyboard-key special" data-key="backspace">Bksp</div>
+            </div>
+            <div class="keyboard-row">
+                <!-- Removed 123/abc keys as there's only one layout -->
+                <div class="keyboard-key" data-key=".">.</div>
+                <div class="keyboard-key extra-wide" data-key=" ">Space</div>
+                <div class="keyboard-key" data-key="@">@</div>
+                <div class="keyboard-key wide special" data-key="enter">Enter</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DOM Element References ---
+        const form = document.getElementById("registerForm");
+        const nameInput = document.getElementById("name");
+        const emailInput = document.getElementById("email");
+        const phoneInput = document.getElementById("phone");
+        const passwordInput = document.getElementById("password");
+        const passwordInputWrapper = document.getElementById('passwordInputWrapper');
+        const nameError = document.getElementById("nameError");
+        const emailError = document.getElementById("emailError");
+        const phoneError = document.getElementById("phoneError");
+        const passwordError = document.getElementById("passwordError");
+        const successModalOverlay = document.getElementById('successModalOverlay');
+        const modalOkButton = document.getElementById('modalOkButton');
+        const togglePassword = document.getElementById('togglePassword');
+
+        const keyboardContainer = document.getElementById('keyboardContainer');
+        const alphaKeyboard = document.getElementById('alphaKeyboard');
+        const keyboardKeys = keyboardContainer.querySelectorAll('.keyboard-key'); // Select all keys from the single layout
+
+        let activeInput = null; // Stores the currently focused input element
+        let isShiftActive = false; // Tracks shift state for alphanumeric keyboard
+        let hideKeyboardTimeout; // To manage blur/click timing
+
+        // --- Validation Functions ---
+
+        /**
+         * Validates an input field and displays/hides its error message and styling.
+         * @param {HTMLElement} inputElement - The input field element.
+         * @param {HTMLElement} errorElement - The div element for the error message.
+         * @param {boolean} isValid - The boolean result of the validation check.
+         * @param {string} errorMessageText - The specific error message to display if not valid.
+         */
+        const validateInput = (inputElement, errorElement, isValid, errorMessageText) => {
+            if (!isValid) {
+                errorElement.textContent = errorMessageText;
+                errorElement.classList.add("show");
+                inputElement.classList.add("error-state");
+                inputElement.classList.remove("success-state");
+            } else {
+                errorElement.textContent = "";
+                errorElement.classList.remove("show");
+                inputElement.classList.remove("error-state");
+                inputElement.classList.add("success-state");
+            }
+        };
+
+        // --- Specific Field Validators ---
+        const validators = {
+            name: (value) => value.trim().length > 0,
+            email: (value) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(value),
+            phone: (value) => /^\d{10,15}$/.test(value), // Ensures only digits and length 10-15
+            password: (value) => /^(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,}$/.test(value), // Uppercase, number, special char, 8+ length
+        };
+
+        // --- Keyboard Logic ---
+
+        /**
+         * Shows the custom keyboard.
+         * @param {HTMLElement} input - The input element that gained focus.
+         */
+        function showKeyboard(input) {
+            clearTimeout(hideKeyboardTimeout); // Clear any pending hide timeouts
+            activeInput = input;
+            keyboardContainer.classList.add('show');
+            // Ensure shift state is correct for the single alpha keyboard
+            updateShiftState();
+        }
+
+        /**
+         * Hides the keyboard after a short delay.
+         * This delay is crucial to allow clicks on keyboard keys to register
+         * before the keyboard disappears due to blur.
+         */
+        function hideKeyboard() {
+            hideKeyboardTimeout = setTimeout(() => {
+                keyboardContainer.classList.remove('show');
+                activeInput = null;
+            }, 150); // Small delay
+        }
+
+        /**
+         * Updates the text content of alphanumeric keys based on shift state.
+         */
+        function updateShiftState() {
+            alphaKeyboard.querySelectorAll('.keyboard-key').forEach(key => {
+                const dataKey = key.getAttribute('data-key');
+                // Only update letters
+                if (dataKey && dataKey.length === 1 && dataKey.match(/[a-z]/i)) {
+                    key.textContent = isShiftActive ? dataKey.toUpperCase() : dataKey.toLowerCase();
+                }
+            });
+            // Update shift key visual state
+            const shiftKey = alphaKeyboard.querySelector('[data-key="shift"]');
+            if (shiftKey) {
+                if (isShiftActive) {
+                    shiftKey.classList.add('active-shift');
+                } else {
+                    shiftKey.classList.remove('active-shift');
+                }
+            }
+        }
+
+        /**
+         * Handles clicks on keyboard keys.
+         * @param {Event} event - The click event.
+         */
+        keyboardContainer.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!target.classList.contains('keyboard-key') || !activeInput) {
+                return; // Not a key or no active input
+            }
+
+            const key = target.getAttribute('data-key');
+            let inputValue = activeInput.value;
+
+            // Prevent blur from hiding keyboard immediately
+            event.preventDefault();
+            activeInput.focus();
+
+            switch (key) {
+                case 'backspace':
+                    activeInput.value = inputValue.slice(0, -1);
+                    break;
+                case 'shift':
+                    isShiftActive = !isShiftActive;
+                    updateShiftState();
+                    break;
+                case 'enter':
+                    const inputs = Array.from(form.querySelectorAll('input'));
+                    const currentIndex = inputs.indexOf(activeInput);
+
+                    if (currentIndex < inputs.length - 1) {
+                        // Move focus to the next input
+                        inputs[currentIndex + 1].focus();
+                    } else {
+                        // If it's the last input, submit the form
+                        form.dispatchEvent(new Event('submit', { cancelable: true }));
+                        hideKeyboard(); // Hide keyboard after submission attempt
+                    }
+                    break;
+                case ' ': // Spacebar
+                    activeInput.value += ' ';
+                    break;
+                default:
+                    // For phone input, only allow digits
+                    if (activeInput.id === 'phone') {
+                        if (key.match(/^\d$/)) { // Check if the key is a digit
+                            activeInput.value += key;
+                        }
+                    } else {
+                        // For other inputs, append character, respecting shift state
+                        activeInput.value += isShiftActive ? key.toUpperCase() : key.toLowerCase();
+                        // If shift was active for a single character, turn it off (like a real keyboard)
+                        if (isShiftActive && key.length === 1 && key.match(/[a-z]/i)) {
+                            isShiftActive = false;
+                            updateShiftState();
+                        }
+                    }
+                    break;
+            }
+
+            // Trigger validation for the active input after key press
+            if (activeInput.id === 'name') validateInput(nameInput, nameError, validators.name(nameInput.value), "Please enter your full name.");
+            if (activeInput.id === 'email') validateInput(emailInput, emailError, validators.email(emailInput.value), "Enter a valid email address.");
+            if (activeInput.id === 'phone') validateInput(phoneInput, phoneError, validators.phone(phoneInput.value), "Phone number must be 10–15 digits.");
+            if (activeInput.id === 'password') validateInput(passwordInput, passwordError, validators.password(passwordInput.value), "Password must be 8+ characters, include uppercase, number & special char.");
+        });
+
+        // --- Event Listeners for Input Fields ---
+
+        // Add focus/blur listeners to all input fields
+        const allInputs = form.querySelectorAll('input');
+        allInputs.forEach(input => {
+            input.addEventListener('focus', (event) => {
+                showKeyboard(event.target);
+                // Prevent native keyboard from appearing
+                input.readOnly = true; // Make it readOnly to prevent native keyboard
+                setTimeout(() => {
+                    input.readOnly = false; // Briefly set back to false to allow programmatic input
+                }, 10); // Small delay
+            });
+            input.addEventListener('blur', hideKeyboard); // Hide keyboard on blur
+        });
+
+        // --- Form Submission Handler ---
+        form.addEventListener("submit", (e) => {
+            e.preventDefault(); // Prevent default form submission (page reload)
+
+            // Re-run all validations on submit to ensure final state is checked
+            const isNameValid = validators.name(nameInput.value);
+            const isEmailValid = validators.email(emailInput.value);
+            const isPhoneValid = validators.phone(phoneInput.value);
+            const isPasswordValid = validators.password(passwordInput.value);
+
+            // Update UI for all fields based on final validation results
+            validateInput(nameInput, nameError, isNameValid, "Please enter your full name.");
+            validateInput(emailInput, emailError, isEmailValid, "Enter a valid email address.");
+            validateInput(phoneInput, phoneError, isPhoneValid, "Phone number must be 10–15 digits.");
+            validateInput(passwordInput, passwordError, isPasswordValid, "Password must be 8+ characters, include uppercase, number & special char.");
+
+            // If ALL fields are valid, show the success modal
+            if (isNameValid && isEmailValid && isPhoneValid && isPasswordValid) {
+                successModalOverlay.classList.add("show"); // Show the modal
+                form.reset(); // Clear the form fields
+
+                // Remove success states from all inputs after form reset
+                nameInput.classList.remove("success-state");
+                emailInput.classList.remove("success-state");
+                phoneInput.classList.remove("success-state");
+                passwordInput.classList.remove("success-state");
+
+                // Ensure password input type is reset to 'password' and hide the slashed eye icon
+                passwordInput.setAttribute('type', 'password');
+                passwordInputWrapper.classList.remove('show-password');
+            }
+        });
+
+        // --- Password Visibility Toggle Logic ---
+        togglePassword.addEventListener('click', () => {
+            const isPasswordVisible = passwordInput.getAttribute('type') === 'text';
+
+            if (isPasswordVisible) {
+                // If currently visible (text), change to hidden (password)
+                passwordInput.setAttribute('type', 'password');
+                passwordInputWrapper.classList.remove('show-password'); // Remove class to show 'eye open' icon
+            } else {
+                // If currently hidden (password), change to visible (text)
+                passwordInput.setAttribute('type', 'text');
+                passwordInputWrapper.classList.add('show-password'); // Add class to show 'eye slashed' icon
+            }
+        });
+
+        // --- Modal Close Logic ---
+        modalOkButton.addEventListener('click', () => {
+            successModalOverlay.classList.remove('show'); // Hide the success modal when OK is clicked
+        });
+
+        // Initial setup for password icon
+        passwordInput.setAttribute('type', 'password'); // Ensure it starts as password
+        passwordInputWrapper.classList.remove('show-password'); // Ensure eye icon is correct initially
+    </script>
+</body>
+</html>
